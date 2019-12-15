@@ -15,7 +15,7 @@ def log_average(a, epsilon=EPSILON):
 def tonemapping_operator_gamma(RGB, gamma=1, EV=0):
     RGB = as_float_array(RGB)
     exposure = 2 ** EV
-    RGB = (exposure * RGB) ** (1 / gamma)
+    RGB = (exposure * RGB) ** (1.0 / gamma)
     return RGB
 
 def tonemapping_operator_logarithmic(RGB, q=1, k=1, colourspace=RGB_COLOURSPACES['sRGB']):
@@ -42,23 +42,27 @@ def tonemapping_operator_exponential(RGB, q=1, k=1, colourspace=RGB_COLOURSPACES
 # hdr_file = "images/images_LeMeur/269/269_HDR2.hdr"
 # hdr_img = cv.imread(hdr_file,cv.IMREAD_ANYDEPTH)
 
-img_fn = ["images/img3.JPG", "images/img2.JPG", "images/img1.JPG", "images/img0.JPG"]
+# img_fn = ["images/img3.JPG", "images/img2.JPG", "images/img1.JPG", "images/img0.JPG"]
+# img_fn = ["images/HDR_src_perso/DSC_0010.JPG", "images/HDR_src_perso/DSC_0009.JPG", "images/HDR_src_perso/DSC_0008.JPG", "images/HDR_src_perso/DSC_0007.JPG"]
+img_fn = ["images/images_LeMeur/234/DSC00236.JPG", "images/images_LeMeur/234/DSC00234.JPG", "images/images_LeMeur/234/DSC00235.JPG"]
 
 # Load and align images
-img_list = [cv.imread(fn) for fn in img_fn]
-# alignMBT = cv.createAlignMTB()
-# alignMBT.process(img_list, img_list)
+img_list = [cv.imread(fn, cv.IMREAD_ANYCOLOR | cv.IMREAD_ANYDEPTH) for fn in img_fn]
+alignMBT = cv.createAlignMTB()
+alignMBT.process(img_list, img_list)
 
 # Merge images into HDR file
-exposure_times = np.array([15.0, 2.5, 0.25, 0.0333], dtype=np.float32)
+exposure_times = np.array([1.0/60.0, 1.0/320.0, 1.0/2500.0], dtype=np.float32)
 merge_debevec = cv.createMergeDebevec()
 hdr_img = merge_debevec.process(img_list, times=exposure_times.copy())
+cv.imwrite("images/res_hdr.hdr", hdr_img)
+cv.imwrite("images/res_hdr.exr", hdr_img)
 
 ### TONEMAPS ###
 
 # Drago tonemap
 # Params : gamma, saturation, bias
-tonemapDrago = cv.createTonemapDrago(gamma=2.2)
+tonemapDrago = cv.createTonemapDrago(gamma=0) #gamma=2.2
 ldrDrago = tonemapDrago.process(hdr_img)
 ldrDrago_8bit = np.clip(ldrDrago*255, 0, 255).astype('uint8')
 cv.imwrite("images/res_drago.jpg", ldrDrago_8bit)
@@ -67,7 +71,7 @@ cv.imshow("Drago", ldrDrago_8bit)
 
 # Durand tonemap
 #Params : gamma, contrast, saturation, sigma_space, sigma_color
-tonemapDurand = cv.createTonemapDurand(gamma=2.2, contrast=5 ,saturation=3)
+tonemapDurand = cv.createTonemapDurand(gamma=0, contrast=0 ,saturation=0) # gamma=2.2, contrast=5 ,saturation=3
 ldrDurand = tonemapDurand.process(hdr_img)
 ldrDurand_8bit = np.clip(ldrDurand*255, 0, 255).astype('uint8')
 cv.imwrite("images/res_durand.jpg", ldrDurand_8bit)
@@ -75,7 +79,7 @@ cv.imshow("Durand", ldrDurand_8bit)
 
 # Mantiuk tonemap
 # Params : gamma, scale, saturation
-tonemapMantiuk = cv.createTonemapMantiuk(2.2,0.85, 1.2)
+tonemapMantiuk = cv.createTonemapMantiuk(0 ,0, 0) #2.2,0.85, 1.2
 ldrMantiuk = tonemapMantiuk.process(hdr_img)
 ldrMantiuk_8bit = np.clip(ldrMantiuk*255, 0, 255).astype('uint8')
 cv.imwrite("images/res_mantiuk.jpg", ldrMantiuk_8bit)
@@ -83,17 +87,20 @@ cv.imshow("Mantiuk", ldrMantiuk_8bit)
 
 # Reinhard tonemap
 # Params : gamma, intensity, light_adapt, color_adapt
-tonemapReinhard = cv.createTonemapReinhard(1.5, 0, 0, 0)
+tonemapReinhard = cv.createTonemapReinhard(0, 0, 0, 0) #1.5, 0, 0, 0
 ldrReinhard = tonemapReinhard.process(hdr_img)
 ldrReinhard_8bit = np.clip(ldrReinhard*255, 0, 255).astype('uint8')
 cv.imwrite("images/res_reinhard.jpg", ldrReinhard_8bit)
 cv.imshow("Reinhard", ldrReinhard_8bit)
 
 # Gamma operator
-ldrGamma = tonemapping_operator_gamma(hdr_img,gamma=1)
+ldrGamma = tonemapping_operator_gamma(hdr_img)
 ldrGamma_8bit = np.clip(ldrGamma*255, 0, 255).astype('uint8')
+# print("MIN :", np.min(ldrGamma_8bit))
+# print("MAX :", np.max(ldrGamma_8bit))
+# print(ldrGamma_8bit)
 cv.imwrite("images/res_gamma.jpg", ldrGamma)
-cv.imshow("Gamma", ldrGamma)
+cv.imshow("Gamma", ldrGamma_8bit)
 
 # Logarithmic operator
 ldrLoga = tonemapping_operator_logarithmic(hdr_img)
